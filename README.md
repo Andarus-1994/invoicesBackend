@@ -1,3 +1,5 @@
+# Invoices App Backend - Node.js Rest APIs with Express & MySQL App
+
 ## Project setup
 
 ```
@@ -9,5 +11,3 @@ npm install
 ```
 npm run dev
 ```
-
-# Node.js Rest APIs with Express & MySQL App
