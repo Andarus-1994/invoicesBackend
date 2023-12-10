@@ -2,11 +2,19 @@ const express = require("express")
 const router = express.Router()
 const { executeQuery } = require("../utils/database")
 
+const parseFrontendDate = (dateString) => {
+  const [day, month, year] = dateString.split("/")
+
+  return new Date(`${year}-${month}-${day}`)
+}
+
 module.exports = () => {
-  router.post("/insertData", async (req, res) => {
-    console.log("enter")
-    const insertDataQuery = "INSERT INTO invoices (name, value) VALUES (?, ?)"
-    const values = [req.body.name, req.body.value]
+  router.post("/create", async (req, res) => {
+    const { name, amount, client_id, issue_date, due_date, status } = req.body
+    const parsedIssueDate = parseFrontendDate(issue_date)
+    const parsedDueDate = parseFrontendDate(due_date)
+    const insertDataQuery = "INSERT INTO invoices (name, amount, client_id, issue_date, due_date, status) VALUES (?, ?, ?, ?, ?, ?)"
+    const values = [name, amount, client_id, parsedIssueDate, parsedDueDate, status]
 
     try {
       const results = await executeQuery(insertDataQuery, values)
@@ -19,7 +27,7 @@ module.exports = () => {
 
   router.get("/getAll", async (req, res) => {
     const selectDataQuery =
-      "SELECT c.name as client, c.company_address, c.address, c.company_name, i.* FROM invoices i LEFT JOIN clients c ON i.client_id = c.id"
+      "SELECT c.name as client, c.company_address, c.address, c.company_name, i.*, COALESCE(i.amount_paid, 0) as amount_paid FROM invoices i LEFT JOIN clients c ON i.client_id = c.id ORDER BY issue_date DESC LIMIT 20"
     try {
       const results = await executeQuery(selectDataQuery)
       res.json({ success: true, results })
@@ -30,6 +38,10 @@ module.exports = () => {
   })
 
   router.post("/filter", async (req, res) => {
+    // created a small timeout
+    const timeoutPromise = () => new Promise((resolve) => setTimeout(resolve, 3000))
+    await timeoutPromise()
+
     let selectDataQuery =
       "SELECT c.name as client, c.company_address, c.address, c.company_name, i.* FROM invoices i LEFT JOIN clients c ON i.client_id = c.id "
     const values = []
@@ -39,7 +51,7 @@ module.exports = () => {
       values.push(req.body.period)
     }
     // limit to 20 invoices and order by issue_date
-    selectDataQuery += "ORDER BY issue_date LIMIT 20"
+    selectDataQuery += "ORDER BY issue_date DESC LIMIT 20"
 
     try {
       const results = await executeQuery(selectDataQuery, values)
