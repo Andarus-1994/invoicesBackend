@@ -14,5 +14,19 @@ module.exports = () => {
     }
   })
 
+  router.post("/create", async (req, res) => {
+    const { name, address, company_name, company_address } = req.body
+    const insertDataQuery = "INSERT INTO clients (name, address, company_name, company_address) VALUES (?, ?, ?, ?)"
+    const values = [name, address, company_name, company_address]
+
+    try {
+      const results = await executeQuery(insertDataQuery, values)
+      res.json({ success: true, results })
+    } catch (error) {
+      console.error("Error inserting data:", error)
+      res.status(500).json({ success: false, error: "Internal Server Error" })
+    }
+  })
+
   return router
 }
