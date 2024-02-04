@@ -2,7 +2,7 @@ const cron = require("node-cron")
 const axios = require("axios")
 
 const startKeepAlive = () => {
-  const serverUrl = "http://invoices-backend-andrey.onrender.com"
+  const serverUrl = "http://invoices-backend-andrey.onrender.com/invoices/getAll"
 
   cron.schedule("*/5 * * * *", async () => {
     try {
