@@ -1,4 +1,4 @@
-const { executeQuery } = require("../services/database")
+const { executeQueryPsql } = require("../services/databasePsql")
 
 const createMultiple = async (req) => {
   const items = req.body.items
@@ -8,12 +8,12 @@ const createMultiple = async (req) => {
 
   const { client_id, invoice_id } = req.body
 
-  const placeholders = items.map(() => "(?, ?, ?, ?, ?, ?)").join(", ")
+  const placeholders = items.map(() => "($1, $2, $3, $4, $5, $6)").join(", ")
   const values = items.flatMap((item) => [item.name, item.description, item.quantity, item.price, client_id, invoice_id])
-  const insertDataQuery = `INSERT INTO items (name, description, quantity, price, client_id, invoice_id) VALUES ${placeholders}`
+  const insertDataQuery = `INSERT INTO items (name, description, quantity, price, client_id, invoice_id) VALUES ${placeholders} RETURNING *`
 
   try {
-    await executeQuery(insertDataQuery, values)
+    await executeQueryPsql(insertDataQuery, values)
   } catch (error) {
     throw "Error on multiple insert items"
   }
