@@ -1,8 +1,6 @@
 const { Pool } = require("pg")
 require("dotenv").config()
-console.log(process.env.DB_USER_PSQL)
-console.log(process.env.DB_PASSWORD_PSQL)
-console.log(process.env.DB_HOST_PSQL)
+
 const pool = new Pool({
   user: process.env.DB_USER_PSQL,
   password: process.env.DB_PASSWORD_PSQL,
@@ -14,8 +12,6 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 })
 
-console.log("PostgreSQL connection details:", pool.options)
-
 const executeQueryPsql = (sql, values) => {
   return new Promise((resolve, reject) => {
     pool.connect((err, client, done) => {
@@ -25,7 +21,7 @@ const executeQueryPsql = (sql, values) => {
       }
 
       client.query(sql, values, (queryErr, results) => {
-        done() // Release the client back to the pool
+        done()
 
         if (queryErr) {
           reject(queryErr)
