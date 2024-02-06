@@ -4,9 +4,18 @@ const { createMultiple } = require("./items")
 
 const getAll = async (req, res) => {
   const selectDataQuery =
-    "SELECT c.name as client, c.company_address, c.address, c.company_name, i.*, COALESCE(i.amount_paid, 0) as amount_paid FROM invoices i LEFT JOIN clients c ON i.client_id = c.id ORDER BY issue_date DESC LIMIT 20"
+    "SELECT c.name as client, c.company_address, c.address, c.company_name, i.*, COALESCE(i.amount_paid, 0) as amount_paid, " +
+    "(SELECT JSON_AGG(items.*) FROM items WHERE items.invoice_id = i.id AND items.client_id = c.id) AS items " +
+    " FROM invoices i LEFT JOIN clients c ON i.client_id = c.id ORDER BY issue_date DESC LIMIT 20 "
+
   try {
     const results = await executeQueryPsql(selectDataQuery)
+
+    // if some results have no items we assign empty []
+    results.forEach((result) => {
+      if (!result.items) result.items = []
+    })
+
     res.json({ success: true, results })
   } catch (error) {
     console.error("Error reading data:", error)
@@ -18,6 +27,7 @@ const create = async (req, res) => {
   const { name, amount, client_id, issue_date, due_date, status, items } = req.body
   const parsedIssueDate = parseFrontendDate(issue_date)
   const parsedDueDate = parseFrontendDate(due_date)
+
   const insertDataQuery = "INSERT INTO invoices (name, amount, client_id, issue_date, due_date, status) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *"
   const values = [name, amount, client_id, parsedIssueDate, parsedDueDate, status]
 
@@ -27,8 +37,10 @@ const create = async (req, res) => {
 
   try {
     const results = await executeQueryPsql(insertDataQuery, values)
-    if (results.insertId) {
-      req.body.invoice_id = results.insertId
+    console.log(results)
+    if (results.length && results[0].id) {
+      req.body.invoice_id = results[0].id
+      // here we create the Items
       await createMultiple(req)
     }
     res.json({ success: true, results })
@@ -39,22 +51,32 @@ const create = async (req, res) => {
 
 const filter = async (req, res) => {
   // created a small timeout
-  const timeoutPromise = () => new Promise((resolve) => setTimeout(resolve, 3000))
-  await timeoutPromise()
 
   let selectDataQuery =
-    "SELECT c.name as client, c.company_address, c.address, c.company_name, i.* FROM invoices i LEFT JOIN clients c ON i.client_id = c.id "
+    "SELECT c.name as client, c.company_address, c.address, c.company_name, i.*, " +
+    "(SELECT JSON_AGG(items.*) FROM items WHERE items.invoice_id = i.id AND items.client_id = c.id) AS items " +
+    " FROM invoices i LEFT JOIN clients c ON i.client_id = c.id "
   const values = []
+  const period = req.body.period
 
-  if (req.body.period !== "") {
-    selectDataQuery += " WHERE issue_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) AND issue_date <= CURDATE()"
-    values.push(req.body.period)
+  if (period !== "") {
+    const fromDate = new Date()
+    fromDate.setDate(fromDate.getDate() - period)
+
+    selectDataQuery += " WHERE issue_date >= $1 AND issue_date <= NOW() "
+    values.push(fromDate.toISOString().split("T")[0])
   }
   // limit to 20 invoices and order by issue_date
   selectDataQuery += "ORDER BY issue_date DESC LIMIT 20"
 
   try {
     const results = await executeQueryPsql(selectDataQuery, values)
+
+    // if some results have no items we assign empty []
+    results.forEach((result) => {
+      if (!result.items) result.items = []
+    })
+
     res.json({ success: true, results })
   } catch (error) {
     console.error("Error inserting data:", error)
