@@ -45,6 +45,7 @@ const create = async (req, res) => {
     }
     res.json({ success: true, results })
   } catch (error) {
+    console.log(error)
     res.status(500).json({ success: false, error: "Internal Server Error" })
   }
 }
@@ -84,8 +85,25 @@ const filter = async (req, res) => {
   }
 }
 
+const remove = async (req, res) => {
+  // created a small timeout
+
+  let removeInvoiceQuery = "DELETE FROM invoices WHERE id = $1"
+  const idInvoice = req.body.id
+  const values = [idInvoice]
+  try {
+    const results = await executeQueryPsql(removeInvoiceQuery, values)
+
+    res.json({ success: true, results })
+  } catch (error) {
+    console.error("Error inserting data:", error)
+    res.status(500).json({ success: false, error: "Internal Server Error" })
+  }
+}
+
 module.exports = {
   getAll,
   create,
   filter,
+  remove,
 }
